@@ -267,7 +267,12 @@ LABEL       classify_struct_example(PATTERN x, STRUCTMODEL *sm,
 		y.seq[i] = (char) maxIndex;
 	}
 	
-
+	for(int i = 0; i<x.N-1; i++) {
+		free(max_track[i]);
+	}
+	free(max_track);
+	free(prob_track);
+	free(prob_current);
 
   return(y);
 }
@@ -380,6 +385,12 @@ LABEL       find_most_violated_constraint_marginrescaling(PATTERN x, LABEL y,
 		maxIndex = max_track[i][maxIndex];
 		ybar.seq[i] = (char) maxIndex;
 	}
+	for(int i = 0; i<x.N-1; i++) {
+		free(max_track[i]);
+	}
+	free(max_track);
+	free(prob_track);
+	free(prob_current);
 	return(ybar);
 }
 
