@@ -23,3 +23,14 @@ pathToSaveMFCCTest = '../mfcc_test_features.save'
 
 pathToSaveFBANKTest = '../fbank_test_features.save'
 pathToSaveTestIds = '../fbank_mfcc_test_ids.save'
+
+pathToChrMap = '../48_idx_chr.map'
+
+pathToFBANKSVMTraining  = '../fbank_svm_training.save'
+pathToFBANKSVMTesting  = '../fbank_svm_testing.save'
+pathToFBANKSVMValidate  = '../fbank_svm_validate.save'
+
+pathToFBANKSVMValidateCodes = '../fbank_svm_validate.code'
+
+pathToFBANKSVMValidateSents = '../fbank_svm_validate.sents'
+pathToFBANKSVMTestingSents = '../fbank_svm_testing.sents'
