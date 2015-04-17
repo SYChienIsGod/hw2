@@ -37,6 +37,21 @@
 # define DEFAULT_ALG_TYPE    3
 /* store Psi(x,y) (for ALG_TYPE 1) instead of recomputing it every time: */
 # define USE_FYCACHE         1
+/* decide whether to evaluate sum before storing vectors in constraint
+   cache: 
+   0 = NO, 
+   1 = YES (best, if sparse vectors and long vector lists), 
+   2 = YES (best, if short vector lists),
+   3 = YES (best, if dense vectors and long vector lists) */
+# define COMPACT_CACHED_VECTORS 1
+/* minimum absolute value below which values in sparse vectors are
+   rounded to zero. Values are stored in the FVAL type defined in svm_common.h 
+   RECOMMENDATION: assuming you use FVAL=float, use 
+     10E-15 if COMPACT_CACHED_VECTORS is 1 
+     10E-10 if COMPACT_CACHED_VECTORS is 2 or 3 
+*/
+# define COMPACT_ROUNDING_THRESH 10E-15
+
 
 typedef struct pattern {
   /* this defines the x-part of a training example, e.g. the structure
@@ -56,6 +71,7 @@ typedef struct structmodel {
   double *w;          /* pointer to the learned weights */
   MODEL  *svm_model;  /* the learned SVM model */
   long   sizePsi;     /* maximum number of weights in w */
+  double walpha;
   /* other information that is needed for the stuctural model can be
      added here, e.g. the grammar rules for NLP parsing */
   int add_your_variables_here;
@@ -70,9 +86,12 @@ typedef struct struct_learn_parm {
   int    ccache_size;          /* maximum number of constraints to
 				  cache for each example (used in w=4
 				  algorithm) */
+  double batch_size;           /* size of the mini batches in percent
+				  of training set size (used in w=4
+				  algorithm) */
   double C;                    /* trade-off between margin and loss */
-  char   custom_argv[20][300]; /* string set with the -u command line option */
-  int    custom_argc;          /* number of -u command line options */
+  char   custom_argv[50][300]; /* storage for the --* command line options */
+  int    custom_argc;          /* number of --* command line options */
   int    slack_norm;           /* norm to use in objective function
                                   for slack variables; 1 -> L1-norm, 
 				  2 -> L2-norm */

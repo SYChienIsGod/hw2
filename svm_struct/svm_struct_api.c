@@ -19,8 +19,8 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <math.h>
 #include <stdlib.h>
+#include <math.h>
 #include <stdbool.h>
 #include "svm_struct/svm_struct_common.h"
 #include "svm_struct_api.h"
@@ -57,7 +57,7 @@ int getOffsetFromLabel(int label) {
 	return label * 69;
 }
 
-SAMPLE read_struct_examples(char *file, STRUCT_LEARN_PARM *sparm)
+SAMPLE      read_struct_examples(char *file, STRUCT_LEARN_PARM *sparm)
 {
   /* Reads struct examples and returns them in sample. The number of
      examples must be written into sample.n */
@@ -148,7 +148,7 @@ void        init_struct_model(SAMPLE sample, STRUCTMODEL *sm,
      weights that can be learned. Later, the weight vector w will
      contain the learned weights for the model. */
 
-  sm->sizePsi=48*117; /* replace by appropriate number of features */
+	sm->sizePsi=48*117; /* replace by appropriate number of features */
 }
 
 CONSTSET    init_struct_constraints(SAMPLE sample, STRUCTMODEL *sm, 
@@ -189,7 +189,6 @@ CONSTSET    init_struct_constraints(SAMPLE sample, STRUCTMODEL *sm,
   }
   return(c);
 }
-
 
 double getOutputProbability(float * x, double * w, int y, int frameId) {
 	double result = 0.0;
@@ -403,8 +402,6 @@ int         empty_label(LABEL y)
   return(0);
 }
 
-
-
 SVECTOR     *psi(PATTERN x, LABEL y, STRUCTMODEL *sm,
 		 STRUCT_LEARN_PARM *sparm)
 {
@@ -476,7 +473,7 @@ double      loss(LABEL y, LABEL ybar, STRUCT_LEARN_PARM *sparm)
        find_most_violated_constraint_???(x, y, sm) has to return the
        highest scoring label with the largest loss. */
   }
-	double loss = 0.0;
+double loss = 0.0;
 	for(int i = 0; i < y.N; i++) {
 		if (i >= ybar.N)
 			break;
@@ -629,17 +626,19 @@ void        print_struct_help_classify()
   printf("                       and there can be multiple options starting with --.\n");
 }
 
-void         parse_struct_parameters_classify(char *attribute, char *value)
+void         parse_struct_parameters_classify(STRUCT_LEARN_PARM *sparm)
 {
-  /* Parses one command line parameters that start with -- . The name
-     of the parameter is given in attribute, the value is given in
-     value. */
+  /* Parses the command line parameters that start with -- for the
+     classification module */
+  int i;
 
-  switch (attribute[2]) 
-    { 
-      /* case 'x': strcpy(xvalue,value); break; */
-      default: printf("\nUnrecognized option %s!\n\n",attribute);
+  for(i=0;(i<sparm->custom_argc) && ((sparm->custom_argv[i])[0] == '-');i++) {
+    switch ((sparm->custom_argv[i])[2]) 
+      { 
+      /* case 'x': i++; strcpy(xvalue,sparm->custom_argv[i]); break; */
+      default: printf("\nUnrecognized option %s!\n\n",sparm->custom_argv[i]);
 	       exit(0);
-    }
+      }
+  }
 }
 
