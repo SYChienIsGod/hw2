@@ -8,6 +8,7 @@ Created on Mon Apr 13 18:06:02 2015
 import paths
 import numpy
 import cPickle
+import coding
 #%% Read Data
 
 trainIds = numpy.loadtxt(paths.pathToFBANKTrain,dtype='str_',usecols=(0,))
@@ -24,15 +25,8 @@ f = file(paths.pathToSave48Labels,'rb')
 fbank_labels = cPickle.load(f)
 f.close()
 
-phonemes = numpy.loadtxt(paths.pathToChrMap,dtype='str_',usecols=(0,))
-phonId = numpy.loadtxt(paths.pathToChrMap,dtype='int',usecols=(1,))
 
 #%% Extract Sentence Ids
-
-
-ph48_39 = numpy.loadtxt(paths.pathToMapPhones,dtype='str_',delimiter='\t')
-phi_48 = dict(zip(numpy.arange(0,48),ph48_39[:,0]))
-phonemes2id = dict(zip(phonemes,phonId))
 
 
 def pack_sentences(features, labels, ids):
@@ -42,23 +36,25 @@ def pack_sentences(features, labels, ids):
     currentY = list()
     currentSentenceId = ''
     vectorIndex = -1
+    maxLength = 0;
     for feature, label, frameId in zip(features, labels, ids):
         frameData = frameId.split('_')
         sentenceId = frameData[0]+'_'+frameData[1]    
         if not sentenceId == currentSentenceId:
             if len(currentX) > 0:
                 data_points.append((numpy.asarray(currentX),numpy.asarray(currentY), currentSentenceId))
+                if len(currentY) > maxLength:
+                    maxLength = len(currentY)
                 currentX = list()
                 currentY = list()
             vectorIndex += 1
         currentSentenceId =  sentenceId
-        phoneme = phi_48[label]
-        phonemeNo = phonemes2id[phoneme]
-        currentY.append(phonemeNo)
+        currentY.append(coding.i48_i39[label])
         for index in range(69):
             currentX.append(feature[index])
     if len(currentX) > 0:
         data_points.append((numpy.asarray(currentX),numpy.asarray(currentY), currentSentenceId))
+    print 'Longest sentence has {0} observations'.format(maxLength)
     return data_points
     
 
@@ -135,29 +131,9 @@ f.close()
 
 
 #%%
-
-phonPhones = numpy.loadtxt(paths.pathToChrMap,dtype='str_',usecols=(0,))
-phonId = numpy.loadtxt(paths.pathToChrMap,dtype='int',usecols=(1,))
-phonLetters = numpy.loadtxt(paths.pathToChrMap,dtype='str_',usecols=(2,))
-ph48_39 = numpy.loadtxt(paths.pathToMapPhones,dtype='str_',delimiter='\t')
-phonemeId2ph48 = dict(zip(phonId,phonPhones))
-ph482ph39 = dict(zip(ph48_39[:,0],ph48_39[:,1]))
-phones2Letter = dict(zip(phonPhones,phonLetters))
-
-def computeResponse(ys):
-    letters = (phones2Letter[ph482ph39[phonemeId2ph48[y]]] for y in ys)
-    letters_out = list()
-    lastLetter = ''
-    for l in letters:
-        if l == lastLetter:
-            continue
-        letters_out.append(l)
-        lastLetter = l
-    code = ''.join(letters_out).replace('K',' ').strip().replace(' ','K')
-    return code
-    
+  
 f = file(paths.pathToFBANKSVMValidateCodes,'wb')
 for xs, ys, sent in validation_data:
-    f.write(computeResponse(ys)+'\n')
+    f.write(coding.computeResponse(ys)+'\n')
 f.close()
 
