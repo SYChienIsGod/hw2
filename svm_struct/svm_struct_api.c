@@ -3,7 +3,7 @@
 /*   svm_struct_api.c                                                  */
 /*                                                                     */
 /*   Definition of API for attaching implementing SVM learning of      */
-/*   structures (e.g. parsing, multi-label classification, HMM)        */ 
+/*   structures (e.g. parsing, multi-label classification, HMM)        */
 /*                                                                     */
 /*   Author: Thorsten Joachims                                         */
 /*   Date: 03.07.04                                                    */
@@ -24,6 +24,9 @@
 #include <stdbool.h>
 #include "svm_struct/svm_struct_common.h"
 #include "svm_struct_api.h"
+
+#define N_STATES 39
+#define N_MAX_OBS 777
 
 void        svm_struct_learn_api_init(int argc, char* argv[])
 {
@@ -50,7 +53,7 @@ void        svm_struct_classify_api_exit()
 }
 
 int getOffsetForTransition(int y_1, int y_2) {
-	return 69 * 48 + y_1 * 48 + y_2;
+	return 69 * N_STATES + y_1 * N_STATES + y_2;
 }
 
 int getOffsetFromLabel(int label) {
@@ -62,8 +65,8 @@ SAMPLE      read_struct_examples(char *file, STRUCT_LEARN_PARM *sparm)
   /* Reads struct examples and returns them in sample. The number of
      examples must be written into sample.n */
   SAMPLE   sample;  /* sample */
-  EXAMPLE  *examples;
-  long     n;       /* number of examples */
+  EXAMPLE  *examples = NULL;
+  long     n = 0;       /* number of examples */
 
   FILE *fp;
   //printf("Opening file %s\n", file);
@@ -74,7 +77,7 @@ SAMPLE      read_struct_examples(char *file, STRUCT_LEARN_PARM *sparm)
 	  perror("Error while opening file.\n");
 	  exit(EXIT_FAILURE);
   }
-	
+
 	bool examplesInitialised = false;
 	int totalSents = 0;
 	int currentSentenceId = 0;
@@ -138,8 +141,8 @@ SAMPLE      read_struct_examples(char *file, STRUCT_LEARN_PARM *sparm)
   return(sample);
 }
 
-void        init_struct_model(SAMPLE sample, STRUCTMODEL *sm, 
-			      STRUCT_LEARN_PARM *sparm, LEARN_PARM *lparm, 
+void        init_struct_model(SAMPLE sample, STRUCTMODEL *sm,
+			      STRUCT_LEARN_PARM *sparm, LEARN_PARM *lparm,
 			      KERNEL_PARM *kparm)
 {
   /* Initialize structmodel sm. The weight vector w does not need to be
@@ -148,10 +151,10 @@ void        init_struct_model(SAMPLE sample, STRUCTMODEL *sm,
      weights that can be learned. Later, the weight vector w will
      contain the learned weights for the model. */
 
-	sm->sizePsi=48*117; /* replace by appropriate number of features */
+	sm->sizePsi=N_STATES*(N_STATES+69); /* replace by appropriate number of features */
 }
 
-CONSTSET    init_struct_constraints(SAMPLE sample, STRUCTMODEL *sm, 
+CONSTSET    init_struct_constraints(SAMPLE sample, STRUCTMODEL *sm,
 				    STRUCT_LEARN_PARM *sparm)
 {
   /* Initializes the optimization problem. Typically, you do not need
@@ -190,21 +193,22 @@ CONSTSET    init_struct_constraints(SAMPLE sample, STRUCTMODEL *sm,
   return(c);
 }
 
+
 double getOutputProbability(float * x, double * w, int y, int frameId) {
 	double result = 0.0;
 	int startW = getOffsetFromLabel(y);
 	int startX = getOffsetFromLabel(frameId);
 	for( int i = 0; i < 69; i++) {
-		result += x[startX+i] * w[startW+i+1];
+		result += x[startX+i] * w[startW+i+1]; // The index to the vector w starts at 1, not at 0!
 	}
 	return (double)result;
 }
 
 double getTransitionProbability(double * w, int y_1, int y_2) {
-	return w[getOffsetForTransition(y_1,y_2)+1];
+	return w[getOffsetForTransition(y_1,y_2)+1]; // The index to the vector w starts at 1, not at 0!
 }
 
-LABEL       classify_struct_example(PATTERN x, STRUCTMODEL *sm, 
+LABEL       classify_struct_example(PATTERN x, STRUCTMODEL *sm,
 				    STRUCT_LEARN_PARM *sparm)
 {
   /* Finds the label yhat for pattern x that scores the highest
@@ -217,24 +221,24 @@ LABEL       classify_struct_example(PATTERN x, STRUCTMODEL *sm,
   LABEL y;
 
   /* insert your code for computing the predicted label y here */
-	
-	double * prob_track = (double*) malloc(sizeof(double)*48);
-	double * prob_current = (double *) malloc(sizeof(double)*48);
+
+	double * prob_track = (double*) malloc(sizeof(double)*N_STATES);
+	double * prob_current = (double *) malloc(sizeof(double)*N_STATES);
 	double * tmp_flip;
 	int ** max_track = (int **) malloc(sizeof(int *)*x.N);
 
 	for(int i = 0; i<x.N-1; i++) {
-		max_track[i] = (int *)malloc(sizeof(int)*48);
+		max_track[i] = (int *)malloc(sizeof(int)*N_STATES);
 	}
 
-	for(int i = 0; i < 48; i++) {
+	for(int i = 0; i < N_STATES; i++) {
 		prob_track[i] = getOutputProbability(x.seq,sm->w,i,0);
 	}
 
 	for(int m = 1; m < x.N; m++) {
-		for(int i = 0; i < 48; i++) {
+		for(int i = 0; i < N_STATES; i++) {
 			prob_current[i] = -INFINITY;
-			for(int j = 0; j < 48; j++) {
+			for(int j = 0; j < N_STATES; j++) {
 				double tmp = prob_track[j] + getTransitionProbability(sm->w, j, i) + getOutputProbability(x.seq,sm->w,i,m);
 				if(tmp > prob_current[i]) {
 					max_track[m-1][i] = j;
@@ -247,12 +251,12 @@ LABEL       classify_struct_example(PATTERN x, STRUCTMODEL *sm,
 		prob_current=  tmp_flip;
 	}
 
-	
+
 	int maxIndex = 0;
 	double maxProb = -INFINITY;
 	y.N = x.N;
 	y.seq = (char *) malloc(sizeof(char)*x.N);
-	for(int i = 0; i < 48; i++) {
+	for(int i = 0; i < N_STATES; i++) {
 		if(prob_track[i] > maxProb) {
 			maxIndex=i;
 			maxProb=prob_track[i];
@@ -265,7 +269,7 @@ LABEL       classify_struct_example(PATTERN x, STRUCTMODEL *sm,
 		maxIndex = max_track[i][maxIndex];
 		y.seq[i] = (char) maxIndex;
 	}
-	
+
 	for(int i = 0; i<x.N-1; i++) {
 		free(max_track[i]);
 	}
@@ -276,8 +280,8 @@ LABEL       classify_struct_example(PATTERN x, STRUCTMODEL *sm,
   return(y);
 }
 
-LABEL       find_most_violated_constraint_slackrescaling(PATTERN x, LABEL y, 
-						     STRUCTMODEL *sm, 
+LABEL       find_most_violated_constraint_slackrescaling(PATTERN x, LABEL y,
+						     STRUCTMODEL *sm,
 						     STRUCT_LEARN_PARM *sparm)
 {
   /* Finds the label ybar for pattern x that that is responsible for
@@ -285,7 +289,7 @@ LABEL       find_most_violated_constraint_slackrescaling(PATTERN x, LABEL y,
      formulation. For linear slack variables, this is that label ybar
      that maximizes
 
-            argmax_{ybar} loss(y,ybar)*(1-psi(x,y)+psi(x,ybar)) 
+            argmax_{ybar} loss(y,ybar)*(1-psi(x,y)+psi(x,ybar))
 
      Note that ybar may be equal to y (i.e. the max is 0), which is
      different from the algorithms described in
@@ -308,8 +312,8 @@ LABEL       find_most_violated_constraint_slackrescaling(PATTERN x, LABEL y,
   return(ybar);
 }
 
-LABEL       find_most_violated_constraint_marginrescaling(PATTERN x, LABEL y, 
-						     STRUCTMODEL *sm, 
+LABEL       find_most_violated_constraint_marginrescaling(PATTERN x, LABEL y,
+						     STRUCTMODEL *sm,
 						     STRUCT_LEARN_PARM *sparm)
 {
   /* Finds the label ybar for pattern x that that is responsible for
@@ -336,26 +340,42 @@ LABEL       find_most_violated_constraint_marginrescaling(PATTERN x, LABEL y,
   LABEL ybar;
 
   /* insert your code for computing the label ybar here */
-	double * prob_track = (double*) malloc(sizeof(double)*48);
-	double * prob_current = (double *) malloc(sizeof(double)*48);
-	double * tmp_flip;
-	int ** max_track = (int **) malloc(sizeof(int *)*x.N);
 
-	for(int i = 0; i<x.N-1; i++) {
-		max_track[i] = (int *)malloc(sizeof(int)*48);
+    // Static pointers for the working memory of the viterbi algorithm
+	static int isInitialised = 0;
+	static double * prob_track;
+	static double * prob_current;
+	static int ** max_track;
+	double * tmp_flip;
+
+    // This code initialises the memory to the static pointers
+	if (isInitialised == 0) {
+        prob_track = (double*) malloc(sizeof(double)*N_STATES);
+        prob_current = (double*) malloc(sizeof(double)*N_STATES);
+        max_track = (int **) malloc(sizeof(int *)*N_MAX_OBS);
+        for(int i = 0; i<N_MAX_OBS-1; i++) {
+            max_track[i] = (int *)malloc(sizeof(int)*N_STATES); // This is prepared for the longest sentence
+        }
+        isInitialised = 1;
 	}
+
 	double tmp_loss = 0.0;
-	for(int i = 0; i < 48; i++) {
+	// x has been observed, so we compute the probability for each state that it has caused that observation
+	// Afterwards, the loss is added (1.0 if y[0] != i, 0.0 else)
+	for(int i = 0; i < N_STATES; i++) {
 		tmp_loss = (int)y.seq[0] != i ? 1.0 : 0.0;
 		prob_track[i] = getOutputProbability(x.seq,sm->w,i,0) + tmp_loss;
 	}
-	
+
+    double outputProbability = 0.0
+    // Walk through the entire sentence, starting from the second observation
 	for(int m = 1; m < x.N; m++) {
-		for(int i = 0; i < 48; i++) {
+		for(int i = 0; i < N_STATES; i++) { // Loop over the current states
 			prob_current[i] = -INFINITY;
 			tmp_loss = (int)y.seq[m] != i ? 1.0 : 0.0;
-			for(int j = 0; j < 48; j++) {
-				double tmp = prob_track[j] + getTransitionProbability(sm->w, j, i) + getOutputProbability(x.seq,sm->w,i,m) + tmp_loss;
+			outputProbability = getOutputProbability(x.seq,sm->w,i,m); // The output probability stays the same for all previous states
+			for(int j = 0; j < N_STATES; j++) { // Loop over the previous states
+				double tmp = prob_track[j] + getTransitionProbability(sm->w, j, i) + outputProbability + tmp_loss;
 				if(tmp > prob_current[i]) {
 					max_track[m-1][i] = j;
 					prob_current[i] = tmp;
@@ -371,7 +391,8 @@ LABEL       find_most_violated_constraint_marginrescaling(PATTERN x, LABEL y,
 	double maxProb = -INFINITY;
 	ybar.N = x.N;
 	ybar.seq = (char *) malloc(sizeof(char)*x.N);
-	for(int i = 0; i < 48; i++) {
+	// Which of the output states is the best?
+	for(int i = 0; i < N_STATES; i++) {
 		if(prob_track[i] > maxProb) {
 			maxIndex=i;
 			maxProb=prob_track[i];
@@ -379,17 +400,11 @@ LABEL       find_most_violated_constraint_marginrescaling(PATTERN x, LABEL y,
 	}
 
 	ybar.seq[ybar.N-1] = (char) maxIndex;
-
+    // Viterbi backtracking
 	for(int i = ybar.N-2; i > -1; i--) {
 		maxIndex = max_track[i][maxIndex];
 		ybar.seq[i] = (char) maxIndex;
 	}
-	for(int i = 0; i<x.N-1; i++) {
-		free(max_track[i]);
-	}
-	free(max_track);
-	free(prob_track);
-	free(prob_current);
 	return(ybar);
 }
 
@@ -430,17 +445,19 @@ SVECTOR     *psi(PATTERN x, LABEL y, STRUCTMODEL *sm,
   fvec->factor = 1;
   fvec->next = NULL;
   fvec->userdefined = (char*)malloc(sizeof(char));
-  fvec->userdefined[0] = 0;		
-  WORD * words = (WORD *) malloc(sizeof(WORD)*(48*117+1));
+  fvec->userdefined[0] = 0;
+  WORD * words = (WORD *) malloc(sizeof(WORD)*(N_STATES*(N_STATES+69)+1));
   fvec->words = words;
-  
-  for(int i = 0; i < 48*117; i++) {
+
+  for(int i = 0; i < N_STATES*(N_STATES+69); i++) {
 	  words[i].wnum = i+1;
 	  words[i].weight = 0.0f;
   }
-  words[48*117].wnum=0;
-  words[48*117].weight = 0.0;
-  
+
+  // the words[] array is terminated by a word with wnum set to 0
+  words[N_STATES*(N_STATES+69)].wnum=0;
+  words[N_STATES*(N_STATES+69)].weight = 0.0;
+
   for(int i = 0; i < y.N; i++) {
 	  int xOffset = i * 69;
 	  for(int j = getOffsetFromLabel(y.seq[i]); j < getOffsetFromLabel(y.seq[i]+1); j++) {
@@ -451,11 +468,7 @@ SVECTOR     *psi(PATTERN x, LABEL y, STRUCTMODEL *sm,
 		  words[getOffsetForTransition(y.seq[i-1],y.seq[i])].weight++;
 	  }
   }
-  float sum = 0.0f;
-  for(int i = 0; i < 48*117; i++) {
-		sum+=fvec->words[i].weight;
-  }
-  
+
   /* insert code for computing the feature vector for x and y here */
 
   return(fvec);
@@ -484,7 +497,7 @@ double loss = 0.0;
 
 int         finalize_iteration(double ceps, int cached_constraint,
 			       SAMPLE sample, STRUCTMODEL *sm,
-			       CONSTSET cset, double *alpha, 
+			       CONSTSET cset, double *alpha,
 			       STRUCT_LEARN_PARM *sparm)
 {
   /* This function is called just before the end of each cutting plane iteration. ceps is the amount by which the most violated constraint found in the current iteration was violated. cached_constraint is true if the added constraint was constructed from the cache. If the return value is FALSE, then the algorithm is allowed to terminate. If it is TRUE, the algorithm will keep iterating even if the desired precision sparm->epsilon is already reached. */
@@ -492,7 +505,7 @@ int         finalize_iteration(double ceps, int cached_constraint,
 }
 
 void        print_struct_learning_stats(SAMPLE sample, STRUCTMODEL *sm,
-					CONSTSET cset, double *alpha, 
+					CONSTSET cset, double *alpha,
 					STRUCT_LEARN_PARM *sparm)
 {
   /* This function is called after training and allows final touches to
@@ -501,7 +514,7 @@ void        print_struct_learning_stats(SAMPLE sample, STRUCTMODEL *sm,
 }
 
 void        print_struct_testing_stats(SAMPLE sample, STRUCTMODEL *sm,
-				       STRUCT_LEARN_PARM *sparm, 
+				       STRUCT_LEARN_PARM *sparm,
 				       STRUCT_TEST_STATS *teststats)
 {
   /* This function is called after making all test predictions in
@@ -511,8 +524,8 @@ void        print_struct_testing_stats(SAMPLE sample, STRUCTMODEL *sm,
      statistics for each prediction. */
 }
 
-void        eval_prediction(long exnum, EXAMPLE ex, LABEL ypred, 
-			    STRUCTMODEL *sm, STRUCT_LEARN_PARM *sparm, 
+void        eval_prediction(long exnum, EXAMPLE ex, LABEL ypred,
+			    STRUCTMODEL *sm, STRUCT_LEARN_PARM *sparm,
 			    STRUCT_TEST_STATS *teststats)
 {
   /* This function allows you to accumlate statistic for how well the
@@ -524,7 +537,7 @@ void        eval_prediction(long exnum, EXAMPLE ex, LABEL ypred,
   }
 }
 
-void        write_struct_model(char *file, STRUCTMODEL *sm, 
+void        write_struct_model(char *file, STRUCTMODEL *sm,
 			       STRUCT_LEARN_PARM *sparm)
 {
   /* Writes structural model sm to file file. */
@@ -540,7 +553,7 @@ STRUCTMODEL read_struct_model(char *file, STRUCT_LEARN_PARM *sparm)
   /* Reads structural model sm from file file. This function is used
      only in the prediction module, not in the learning module. */
 	STRUCTMODEL sm;
-	sm.sizePsi = 117*48;
+	sm.sizePsi = (N_STATES+69)*N_STATES;
 	FILE * fp = fopen(file,"rb");
 	sm.w = (double *) malloc(sizeof(double)*(sm.sizePsi));
 	MODEL * svm_model = (MODEL*)malloc(sizeof(MODEL));
@@ -562,7 +575,7 @@ void        write_label(FILE *fp, LABEL y)
 		fprintf(fp,"%i ",y.seq[i]);
 	}
 	fprintf(fp,"\n");
-} 
+}
 
 void        free_pattern(PATTERN x) {
   /* Frees the memory of x. */
@@ -572,7 +585,7 @@ void        free_label(LABEL y) {
   /* Frees the memory of y. */
 }
 
-void        free_struct_model(STRUCTMODEL sm) 
+void        free_struct_model(STRUCTMODEL sm)
 {
   /* Frees the memory of model. */
   /* if(sm.w) free(sm.w); */ /* this is free'd in free_model */
@@ -584,7 +597,7 @@ void        free_struct_sample(SAMPLE s)
 {
   /* Frees the memory of sample s. */
   int i;
-  for(i=0;i<s.n;i++) { 
+  for(i=0;i<s.n;i++) {
     free_pattern(s.examples[i].x);
     free_label(s.examples[i].y);
   }
@@ -606,8 +619,8 @@ void         parse_struct_parameters(STRUCT_LEARN_PARM *sparm)
   int i;
 
   for(i=0;(i<sparm->custom_argc) && ((sparm->custom_argv[i])[0] == '-');i++) {
-    switch ((sparm->custom_argv[i])[2]) 
-      { 
+    switch ((sparm->custom_argv[i])[2])
+      {
       case 'a': i++; /* strcpy(learn_parm->alphafile,argv[i]); */ break;
       case 'e': i++; /* sparm->epsilon=atof(sparm->custom_argv[i]); */ break;
       case 'k': i++; /* sparm->newconstretrain=atol(sparm->custom_argv[i]); */ break;
@@ -633,8 +646,8 @@ void         parse_struct_parameters_classify(STRUCT_LEARN_PARM *sparm)
   int i;
 
   for(i=0;(i<sparm->custom_argc) && ((sparm->custom_argv[i])[0] == '-');i++) {
-    switch ((sparm->custom_argv[i])[2]) 
-      { 
+    switch ((sparm->custom_argv[i])[2])
+      {
       /* case 'x': i++; strcpy(xvalue,sparm->custom_argv[i]); break; */
       default: printf("\nUnrecognized option %s!\n\n",sparm->custom_argv[i]);
 	       exit(0);
