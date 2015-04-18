@@ -9,9 +9,9 @@ import paths
 import numpy
 import Levenshtein
 
-validation = True # Set this to false for testing -> generates the submission output
-pathToSVMValidationOutput = '../svm_struct/fbank_svm_validate.out'
-pathToSVMTestOutput = '../svm_struct/fbank_svm_test.out'
+validation = False # Set this to false for testing -> generates the submission output
+pathToSVMValidationOutput = '../fbank_svm_validate.output'
+pathToSVMTestOutput = '../fbank_svm_test.output'
 pathToSubmission = '../hw2_submission.csv'
 
 if validation:
@@ -19,12 +19,16 @@ if validation:
 else:
     pathToSVMOut = pathToSVMTestOutput
 
+phonPhones = numpy.loadtxt(paths.pathToChrMap,dtype='str_',usecols=(0,))
 phonId = numpy.loadtxt(paths.pathToChrMap,dtype='int',usecols=(1,))
 phonLetters = numpy.loadtxt(paths.pathToChrMap,dtype='str_',usecols=(2,))
-phonemeId2Letter = dict(zip(phonId,phonLetters))
+ph48_39 = numpy.loadtxt(paths.pathToMapPhones,dtype='str_',delimiter='\t')
+phonemeId2ph48 = dict(zip(phonId,phonPhones))
+ph482ph39 = dict(zip(ph48_39[:,0],ph48_39[:,1]))
+phones2Letter = dict(zip(phonPhones,phonLetters))
 
 def computeResponse(ys):
-    letters = (phonemeId2Letter[y] for y in ys)
+    letters = (phones2Letter[ph482ph39[phonemeId2ph48[y]]] for y in ys)
     letters_out = list()
     lastLetter = ''
     for l in letters:
@@ -38,13 +42,15 @@ def computeResponse(ys):
 codes = list()
 
 for line in file(pathToSVMOut,'rb'):
-    ys = (int(s) for s in line.split(' '))
+    ys = (int(s) for s in line.strip().split(' '))
     codes.append(computeResponse(ys))
     
 if validation:
     refCodes = numpy.loadtxt(paths.pathToFBANKSVMValidateCodes,dtype='str')
-    lens = numpy.asarray(len(refC) for refC in refCodes)
-    editDist = numpy.asarray(Levenshtein.distance(refC,recC) for refC,recC in zip(refCodes,codes))
+    for refC,recC in zip(refCodes,codes):
+        print refC + ' ' + recC
+    lens = numpy.asarray([len(refC) for refC in refCodes])
+    editDist = numpy.asarray([Levenshtein.distance(refC,recC) for refC,recC in zip(refCodes,codes)])
     accs = (lens-editDist)/lens
     print 'Average accuracy is %f' % numpy.mean(accs)
 else:

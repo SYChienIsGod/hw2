@@ -42,23 +42,23 @@ def pack_sentences(features, labels, ids):
     currentY = list()
     currentSentenceId = ''
     vectorIndex = -1
-    sentenceIds = list()
     for feature, label, frameId in zip(features, labels, ids):
         frameData = frameId.split('_')
         sentenceId = frameData[0]+'_'+frameData[1]    
         if not sentenceId == currentSentenceId:
-            currentSentenceId =  sentenceId
             if len(currentX) > 0:
                 data_points.append((numpy.asarray(currentX),numpy.asarray(currentY), currentSentenceId))
                 currentX = list()
                 currentY = list()
             vectorIndex += 1
-            sentenceIds.append(currentSentenceId)
+        currentSentenceId =  sentenceId
         phoneme = phi_48[label]
         phonemeNo = phonemes2id[phoneme]
         currentY.append(phonemeNo)
         for index in range(69):
             currentX.append(feature[index])
+    if len(currentX) > 0:
+        data_points.append((numpy.asarray(currentX),numpy.asarray(currentY), currentSentenceId))
     return data_points
     
 
@@ -136,11 +136,16 @@ f.close()
 
 #%%
 
+phonPhones = numpy.loadtxt(paths.pathToChrMap,dtype='str_',usecols=(0,))
+phonId = numpy.loadtxt(paths.pathToChrMap,dtype='int',usecols=(1,))
 phonLetters = numpy.loadtxt(paths.pathToChrMap,dtype='str_',usecols=(2,))
-phonemeId2Letter = dict(zip(phonId,phonLetters))
+ph48_39 = numpy.loadtxt(paths.pathToMapPhones,dtype='str_',delimiter='\t')
+phonemeId2ph48 = dict(zip(phonId,phonPhones))
+ph482ph39 = dict(zip(ph48_39[:,0],ph48_39[:,1]))
+phones2Letter = dict(zip(phonPhones,phonLetters))
 
 def computeResponse(ys):
-    letters = (phonemeId2Letter[y] for y in ys)
+    letters = (phones2Letter[ph482ph39[phonemeId2ph48[y]]] for y in ys)
     letters_out = list()
     lastLetter = ''
     for l in letters:
