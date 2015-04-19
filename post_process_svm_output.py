@@ -10,7 +10,7 @@ import numpy
 import Levenshtein
 import coding
 
-validation = True # Set this to false for testing -> generates the submission output
+validation = False # Set this to false for testing -> generates the submission output
 
 
 if validation:

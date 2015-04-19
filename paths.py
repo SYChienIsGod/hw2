@@ -24,7 +24,7 @@ pathToSaveMFCCTest = '../data/mfcc_test_features.save'
 pathToSaveFBANKTest = '../data/fbank_test_features.save'
 pathToSaveTestIds = '../data/fbank_mfcc_test_ids.save'
 
-pathToChrMap = '../data/48_idx_chr.map'
+pathToChrMap = '../data/48_idx_chr.map_b'
 
 pathToFBANKSVMTraining  = '../data/fbank_svm_training.save'
 pathToFBANKSVMTesting  = '../data/fbank_svm_testing.save'

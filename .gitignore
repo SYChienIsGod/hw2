@@ -1,0 +1,10 @@
+*.md~
+.gitignore~
+svm_struct/*.model
+*.pyc
+svm_struct/*o
+svm_struct/svm_empty_*
+svm_struct/svm_struct/
+svm_struct/svm_light/
+svm_struct/svm_struct_api.h
+svm_struct/svm_struct_learn_custom.c

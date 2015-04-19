@@ -38,5 +38,5 @@ def computeResponse(ys):
             continue
         letters_out.append(l)
         lastLetter = l
-    code = ''.join(letters_out).replace('K',' ').strip().replace(' ','K')
+    code = ''.join(letters_out).replace('L',' ').strip().replace(' ','L')
     return code
