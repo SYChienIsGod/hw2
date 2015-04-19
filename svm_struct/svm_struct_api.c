@@ -367,7 +367,7 @@ LABEL       find_most_violated_constraint_marginrescaling(PATTERN x, LABEL y,
 		prob_track[i] = getOutputProbability(x.seq,sm->w,i,0) + tmp_loss;
 	}
 
-    double outputProbability = 0.0
+    double outputProbability = 0.0; //<= you forgot to add ";"~
     // Walk through the entire sentence, starting from the second observation
 	for(int m = 1; m < x.N; m++) {
 		for(int i = 0; i < N_STATES; i++) { // Loop over the current states
