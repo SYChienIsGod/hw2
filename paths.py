@@ -30,7 +30,7 @@ pathToFBANKSVMTraining  = '../data/fbank_svm_training.save'
 pathToFBANKSVMTesting  = '../data/fbank_svm_testing.save'
 pathToFBANKSVMValidate  = '../data/fbank_svm_validate.save'
 
-pathToFBANKSVMValidateCodes = '../data/fbank_svm_validate.code'
+pathToFBANKSVMValidateCodes = '../data/fbank_nn_svm_validation.code'
 
 pathToFBANKSVMValidateSents = '../data/fbank_svm_validate.sents'
 pathToFBANKSVMTestingSents = '../data/fbank_svm_testing.sents'
@@ -38,3 +38,5 @@ pathToFBANKSVMTestingSents = '../data/fbank_svm_testing.sents'
 pathToSVMValidationOutput = '../data/fbank_svm_validate.output'
 pathToSVMTestOutput = '../data/fbank_svm_test.output'
 pathToSubmission = '../data/hw2_submission.csv'
+
+pathToSentenceGroupIds = '../data/fbank_sentence_group_ids.save'

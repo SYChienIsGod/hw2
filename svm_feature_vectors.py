@@ -27,39 +27,10 @@ f.close()
 
 
 #%% Extract Sentence Ids
-
-
-def pack_sentences(features, labels, ids):
-    data_points = list()
-    
-    currentX = list()
-    currentY = list()
-    currentSentenceId = ''
-    vectorIndex = -1
-    maxLength = 0;
-    for feature, label, frameId in zip(features, labels, ids):
-        frameData = frameId.split('_')
-        sentenceId = frameData[0]+'_'+frameData[1]    
-        if not sentenceId == currentSentenceId:
-            if len(currentX) > 0:
-                data_points.append((numpy.asarray(currentX),numpy.asarray(currentY), currentSentenceId))
-                if len(currentY) > maxLength:
-                    maxLength = len(currentY)
-                currentX = list()
-                currentY = list()
-            vectorIndex += 1
-        currentSentenceId =  sentenceId
-        currentY.append(coding.i48_i39[label])
-        for index in range(69):
-            currentX.append(feature[index])
-    if len(currentX) > 0:
-        data_points.append((numpy.asarray(currentX),numpy.asarray(currentY), currentSentenceId))
-    print 'Longest sentence has {0} observations'.format(maxLength)
-    return data_points
     
 
-data_points = pack_sentences(fbank_feat,fbank_labels, trainIds)
-test_points = pack_sentences(fbank_test_feat, numpy.zeros(shape=(fbank_test_feat.shape[0],)), testIds)
+data_points = coding.pack_sentences(fbank_feat,fbank_labels, trainIds)
+test_points = coding.pack_sentences(fbank_test_feat, numpy.zeros(shape=(fbank_test_feat.shape[0],)), testIds)
 
 #%% Make a split
 
@@ -78,7 +49,7 @@ for k in validation_index:
 
 
 #%% 
-
+           
 
 f = file(paths.pathToFBANKSVMTraining,'wb')
 
