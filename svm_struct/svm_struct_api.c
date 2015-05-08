@@ -26,6 +26,7 @@
 #include "svm_struct_api.h"
 
 #define N_STATES 39
+#define N_FEATURES 100
 #define N_MAX_OBS 777
 
 void        svm_struct_learn_api_init(int argc, char* argv[])
@@ -53,11 +54,11 @@ void        svm_struct_classify_api_exit()
 }
 
 int getOffsetForTransition(int y_1, int y_2) {
-	return 69 * N_STATES + y_1 * N_STATES + y_2;
+	return N_FEATURES * N_STATES + y_1 * N_STATES + y_2;
 }
 
 int getOffsetFromLabel(int label) {
-	return label * 69;
+	return label * N_FEATURES;
 }
 
 SAMPLE      read_struct_examples(char *file, STRUCT_LEARN_PARM *sparm)
@@ -83,15 +84,15 @@ SAMPLE      read_struct_examples(char *file, STRUCT_LEARN_PARM *sparm)
 	int currentSentenceId = 0;
 	int totalFrames = 0;
 	int currentFrameId = 0;
-	EXAMPLE * currentExample;
 	int currentLabel = 0;
-	float * features = (float *) malloc(sizeof(float)*69);
+	float * features = (float *) malloc(sizeof(float)*N_FEATURES);
+	int failureDummy = 0;
 	while(!feof(fp)) {
-		fscanf(fp,"%i",&totalSents);
-		fscanf(fp,"%i",&currentSentenceId);
-		fscanf(fp,"%i",&totalFrames);
-		fscanf(fp,"%i",&currentFrameId);
-		fscanf(fp," %i",&currentLabel);
+		failureDummy=fscanf(fp,"%i",&totalSents);
+		failureDummy=fscanf(fp,"%i",&currentSentenceId);
+		failureDummy=fscanf(fp,"%i",&totalFrames);
+		failureDummy=fscanf(fp,"%i",&currentFrameId);
+		failureDummy=fscanf(fp," %i",&currentLabel);
 		//printf("#Sents=%i, SentId=%i, #Frames=%i, FrameId=%i, Label=%i\n", totalSents,currentSentenceId,totalFrames,currentFrameId,currentLabel);
 		if(!examplesInitialised) {
 			//printf("Initialising %i examples...\n",totalSents);
@@ -106,17 +107,17 @@ SAMPLE      read_struct_examples(char *file, STRUCT_LEARN_PARM *sparm)
 		if(examples[currentSentenceId].x.N == -1) {
 			//printf("Sentence %i: preparing example...\n",currentSentenceId);
 			examples[currentSentenceId].x.N = totalFrames;
-			examples[currentSentenceId].x.seq = (float *) malloc(sizeof(float)*totalFrames*69);
+			examples[currentSentenceId].x.seq = (float *) malloc(sizeof(float)*totalFrames*N_FEATURES);
 			examples[currentSentenceId].y.N = totalFrames;
 			examples[currentSentenceId].y.seq = (char *) malloc(sizeof(char)*totalFrames);
 		}
 		//printf("Initialising current example finished...\n");
-		for(int i = 0; i < 69; i++) {
-			fscanf(fp," %f",features+i);
+		for(int i = 0; i < N_FEATURES; i++) {
+			failureDummy=fscanf(fp," %f",features+i);
 		}
 		examples[currentSentenceId].y.seq[currentFrameId] = (char)currentLabel;
-		for(int i = 0; i < 69; i++) {
-			examples[currentSentenceId].x.seq[currentFrameId*69+i] = (float)features[i];
+		for(int i = 0; i < N_FEATURES; i++) {
+			examples[currentSentenceId].x.seq[currentFrameId*N_FEATURES+i] = (float)features[i];
 		}
 		//printf("\nWriting x to current example finished...\n");
 		if(currentFrameId == totalFrames-1 && currentSentenceId == totalSents-1)
@@ -151,7 +152,7 @@ void        init_struct_model(SAMPLE sample, STRUCTMODEL *sm,
      weights that can be learned. Later, the weight vector w will
      contain the learned weights for the model. */
 
-	sm->sizePsi=N_STATES*(N_STATES+69); /* replace by appropriate number of features */
+	sm->sizePsi=N_STATES*(N_STATES+N_FEATURES); /* replace by appropriate number of features */
 }
 
 CONSTSET    init_struct_constraints(SAMPLE sample, STRUCTMODEL *sm,
@@ -198,7 +199,7 @@ double getOutputProbability(float * x, double * w, int y, int frameId) {
 	double result = 0.0;
 	int startW = getOffsetFromLabel(y);
 	int startX = getOffsetFromLabel(frameId);
-	for( int i = 0; i < 69; i++) {
+	for( int i = 0; i < N_FEATURES; i++) {
 		result += x[startX+i] * w[startW+i+1]; // The index to the vector w starts at 1, not at 0!
 	}
 	return (double)result;
@@ -446,20 +447,20 @@ SVECTOR     *psi(PATTERN x, LABEL y, STRUCTMODEL *sm,
   fvec->next = NULL;
   fvec->userdefined = (char*)malloc(sizeof(char));
   fvec->userdefined[0] = 0;
-  WORD * words = (WORD *) malloc(sizeof(WORD)*(N_STATES*(N_STATES+69)+1));
+  WORD * words = (WORD *) malloc(sizeof(WORD)*(N_STATES*(N_STATES+N_FEATURES)+1));
   fvec->words = words;
 
-  for(int i = 0; i < N_STATES*(N_STATES+69); i++) {
+  for(int i = 0; i < N_STATES*(N_STATES+N_FEATURES); i++) {
 	  words[i].wnum = i+1;
 	  words[i].weight = 0.0f;
   }
 
   // the words[] array is terminated by a word with wnum set to 0
-  words[N_STATES*(N_STATES+69)].wnum=0;
-  words[N_STATES*(N_STATES+69)].weight = 0.0;
+  words[N_STATES*(N_STATES+N_FEATURES)].wnum=0;
+  words[N_STATES*(N_STATES+N_FEATURES)].weight = 0.0;
 
   for(int i = 0; i < y.N; i++) {
-	  int xOffset = i * 69;
+	  int xOffset = i * N_FEATURES;
 	  for(int j = getOffsetFromLabel(y.seq[i]); j < getOffsetFromLabel(y.seq[i]+1); j++) {
 		  words[j].weight += x.seq[xOffset];
 		  xOffset++;
@@ -553,7 +554,7 @@ STRUCTMODEL read_struct_model(char *file, STRUCT_LEARN_PARM *sparm)
   /* Reads structural model sm from file file. This function is used
      only in the prediction module, not in the learning module. */
 	STRUCTMODEL sm;
-	sm.sizePsi = (N_STATES+69)*N_STATES;
+	sm.sizePsi = (N_STATES+N_FEATURES)*N_STATES;
 	FILE * fp = fopen(file,"rb");
 	sm.w = (double *) malloc(sizeof(double)*(sm.sizePsi));
 	MODEL * svm_model = (MODEL*)malloc(sizeof(MODEL));
